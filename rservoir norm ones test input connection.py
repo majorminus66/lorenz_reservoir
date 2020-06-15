@@ -119,6 +119,7 @@ def predict(res, x0 = 0, y0 = 0, z0 = 0, steps = 1000):
     return Y
 
 def test(res, num_tests = 10, rkTime = 105, split = 2000):
+    valid_time = np.array([])
     for i in range(num_tests):
         ic = np.random.rand(3)*2
         rktest = RungeKutta(x0 = ic[0], y0 = ic[1], z0 = ic[2], T = rkTime, ttsplit = split)
@@ -129,12 +130,19 @@ def test(res, num_tests = 10, rkTime = 105, split = 2000):
         
         pred = predict(res, x0 = rktest.u_arr_test[0,0], y0 = rktest.u_arr_test[1,0], z0 = rktest.u_arr_test[2,0], steps = (rkTime*20-split))
         
+        for i in range(0, pred[0].size):
+            if np.abs(pred[0, i] - rktest.u_arr_test[0, i]) > 0.5:
+                valid_time = np.append(valid_time, i)
+                break
+        
+        
         plt.figure()
         plt.plot(pred[0])
         plt.plot(rktest.u_arr_test[0])
     
     plt.show()
-    return
+    print("Avg. valid time: " + str(np.mean(valid_time)))
+    return np.mean(valid_time)
 
 res = Reservoir()
 rk = RungeKutta(T = 300)
