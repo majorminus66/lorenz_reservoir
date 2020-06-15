@@ -8,8 +8,8 @@ Created on Wed Jun  3 12:57:49 2020
 
 from lorenzrungekutta import rungekutta
 import numpy as np
-from sklearn.linear_model import Ridge
-from sklearn.preprocessing import normalize
+#from sklearn.linear_model import Ridge
+from scipy import sparse
 from scipy.linalg import solve
 from scipy.sparse.linalg import eigs
 from matplotlib import pyplot as plt
@@ -35,8 +35,15 @@ class Reservoir:
     
         max_eig = eigs(unnormalized_W, k = 1, return_eigenvectors = False)
         
-        self.W = spectral_radius/np.abs(max_eig)*unnormalized_W       
-        self.Win = (np.random.rand(rsvr_size, 4)*2 - 1)*input_weight
+        self.W = spectral_radius/np.abs(max_eig)*unnormalized_W
+        
+        Win = np.zeros((rsvr_size, 4))
+        Win[:int(rsvr_size/4), 0] = (np.random.rand(int(rsvr_size/4))*2 - 1)*input_weight
+        Win[int(rsvr_size/4):2*int(rsvr_size/4), 1] = (np.random.rand(int(rsvr_size/4))*2 - 1)*input_weight
+        Win[2*int(rsvr_size/4):3*int(rsvr_size/4), 2] = (np.random.rand(int(rsvr_size/4))*2 - 1)*input_weight
+        Win[3*int(rsvr_size/4):, 3] = (np.random.rand(Win[3*int(rsvr_size/4):, 3].size)*2 - 1)*input_weight
+        
+        self.Win = Win
         self.X = (np.random.rand(rsvr_size, 5002)*2 - 1)
         self.Wout = np.array([])
         
@@ -107,7 +114,7 @@ def predict(res, x0 = 0, y0 = 0, z0 = 0, steps = 1000):
         y_in = np.append(1, Y[:,i]).reshape(4,1)
         x_prev = X[:,i].reshape(res.rsvr_size,1)
         
-        x_current = np.tanh(np.add(np.matmul(res.Win, y_in), np.matmul(res.W, x_prev)))
+        x_current = np.tanh(np.add(np.dot(res.Win, y_in), np.matmul(res.W, x_prev)))
         X[:,i+1] = x_current.reshape(1,res.rsvr_size)
         #X = np.concatenate((X, x_current), axis = 1)
         
@@ -118,7 +125,7 @@ def predict(res, x0 = 0, y0 = 0, z0 = 0, steps = 1000):
 
     return Y
 
-def test(res, num_tests = 10, rkTime = 105, split = 2000):
+def test(res, num_tests = 10, rkTime = 105, split = 2000, showPlots = True):
     valid_time = np.array([])
     for i in range(num_tests):
         ic = np.random.rand(3)*2
@@ -135,13 +142,15 @@ def test(res, num_tests = 10, rkTime = 105, split = 2000):
                 valid_time = np.append(valid_time, i)
                 break
         
-        
-        plt.figure()
-        plt.plot(pred[0])
-        plt.plot(rktest.u_arr_test[0])
+        if showPlots:
+            plt.figure()
+            plt.plot(pred[0])
+            plt.plot(rktest.u_arr_test[0])
     
-    plt.show()
-    print("Avg. valid time: " + str(np.mean(valid_time)))
+    if showPlots:
+        plt.show()
+    
+    print("Avg. valid time steps: " + str(np.mean(valid_time)))
     return np.mean(valid_time)
 
 res = Reservoir()
@@ -154,4 +163,4 @@ trainRRM(res, rk)
 #plt.plot(rk.u_arr_test[0])
 
 np.random.seed()
-test(res, 10)
+test(res, 10, showPlots = False)
