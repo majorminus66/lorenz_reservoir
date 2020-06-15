@@ -22,7 +22,7 @@ np.random.seed(0)
 #spectral radius, input scaling
 
 class Reservoir:
-    def __init__(self, rsvr_size = 300, spectral_radius = 0.8, input_weight = 0.9):
+    def __init__(self, rsvr_size = 300, spectral_radius = 0.8, input_weight = 1):
         self.rsvr_size = rsvr_size
         
         #get spectral radius < 1
@@ -35,7 +35,7 @@ class Reservoir:
     
         max_eig = eigs(unnormalized_W, k = 1, return_eigenvectors = False)
         
-        self.W = spectral_radius/np.abs(max_eig)*unnormalized_W
+        self.W = sparse.csr_matrix(spectral_radius/np.abs(max_eig)*unnormalized_W)
         
         Win = np.zeros((rsvr_size, 4))
         Win[:int(rsvr_size/4), 0] = (np.random.rand(int(rsvr_size/4))*2 - 1)*input_weight
@@ -43,7 +43,7 @@ class Reservoir:
         Win[2*int(rsvr_size/4):3*int(rsvr_size/4), 2] = (np.random.rand(int(rsvr_size/4))*2 - 1)*input_weight
         Win[3*int(rsvr_size/4):, 3] = (np.random.rand(Win[3*int(rsvr_size/4):, 3].size)*2 - 1)*input_weight
         
-        self.Win = Win
+        self.Win = sparse.csr_matrix(Win)
         self.X = (np.random.rand(rsvr_size, 5002)*2 - 1)
         self.Wout = np.array([])
         
@@ -69,7 +69,7 @@ def getX(res, rk,x0 = 1,y0 = 1,z0 = 1):
         u = np.append(1, rk.u_arr_train[:,i]).reshape(4,1)
         
         x = res.X[:,i].reshape(res.rsvr_size,1)
-        x_update = np.tanh(np.add(np.matmul(res.Win, u), np.matmul(res.W, x)))
+        x_update = np.tanh(np.add(res.Win.dot(u), res.W.dot(x)))
         
         res.X[:,i+1] = x_update.reshape(1,res.rsvr_size)    
     
@@ -114,7 +114,7 @@ def predict(res, x0 = 0, y0 = 0, z0 = 0, steps = 1000):
         y_in = np.append(1, Y[:,i]).reshape(4,1)
         x_prev = X[:,i].reshape(res.rsvr_size,1)
         
-        x_current = np.tanh(np.add(np.dot(res.Win, y_in), np.matmul(res.W, x_prev)))
+        x_current = np.tanh(np.add(res.Win.dot(y_in), res.W.dot(x_prev)))
         X[:,i+1] = x_current.reshape(1,res.rsvr_size)
         #X = np.concatenate((X, x_current), axis = 1)
         
@@ -163,4 +163,4 @@ trainRRM(res, rk)
 #plt.plot(rk.u_arr_test[0])
 
 np.random.seed()
-test(res, 10, showPlots = False)
+test(res, 10, showPlots = True)
