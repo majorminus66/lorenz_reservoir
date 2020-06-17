@@ -20,7 +20,7 @@ np.random.seed(0)
 
 #58 seems to be unstable boundary
 class Reservoir:
-    def __init__(self, rsvr_size = 300, spectral_radius = 0.8, input_weight = 1):
+    def __init__(self, rsvr_size = 50, spectral_radius = 0.6, input_weight = 1):
         self.rsvr_size = rsvr_size
         
         #get spectral radius < 1
@@ -35,7 +35,7 @@ class Reservoir:
         
         self.W = sparse.csr_matrix(spectral_radius/np.abs(max_eig)*unnormalized_W)
         
-        const_conn = 50
+        const_conn = int(rsvr_size*0.15)
         Win = np.zeros((rsvr_size, 4))
         Win[:const_conn, 0] = (np.random.rand(Win[:const_conn, 0].size)*2 - 1)*input_weight
         Win[const_conn: const_conn + int((rsvr_size-const_conn)/3), 1] = (np.random.rand(Win[const_conn: const_conn + int((rsvr_size-const_conn)/3), 1].size)*2 - 1)*input_weight
@@ -47,7 +47,7 @@ class Reservoir:
         self.Wout = np.array([])
         
 class RungeKutta:
-    def __init__(self, x0 = 2,y0 = 2,z0 = 30, h = 0.01, T = 300, ttsplit = 5000, noise_scaling = 0.0):
+    def __init__(self, x0 = 2,y0 = 2,z0 = 30, h = 0.01, T = 300, ttsplit = 5000, noise_scaling = 0.02):
         u_arr = rungekutta(x0,y0,z0,h,T)[:, ::5]
         
         #print(np.std(u_arr[0]))
@@ -63,7 +63,7 @@ class RungeKutta:
         
         #noisy training array
         #switch to gaussian 
-        noise = (np.random.rand(self.u_arr_train[:,0].size, self.u_arr_train[0,:].size)-0.5)*noise_scaling
+        noise = np.random.randn(self.u_arr_train[:,0].size, self.u_arr_train[0,:].size)*noise_scaling 
         self.u_arr_train_noise = self.u_arr_train + noise
         
         #plt.plot(self.u_arr_train_noise[0, :500])
