@@ -18,9 +18,9 @@ np.random.seed(0)
 
 #why is lorenz signal passing 0?
 
-#58 seems to be unstable boundary
+#50 seems to be unstable boundary
 class Reservoir:
-    def __init__(self, rsvr_size = 50, spectral_radius = 0.6, input_weight = 1):
+    def __init__(self, rsvr_size = 300, spectral_radius = 0.6, input_weight = 1):
         self.rsvr_size = rsvr_size
         
         #get spectral radius < 1
@@ -47,7 +47,7 @@ class Reservoir:
         self.Wout = np.array([])
         
 class RungeKutta:
-    def __init__(self, x0 = 2,y0 = 2,z0 = 30, h = 0.01, T = 300, ttsplit = 5000, noise_scaling = 0.02):
+    def __init__(self, x0 = 2,y0 = 2,z0 = 23, h = 0.01, T = 300, ttsplit = 5000, noise_scaling = 0):
         u_arr = rungekutta(x0,y0,z0,h,T)[:, ::5]
         
         #print(np.std(u_arr[0]))
@@ -144,7 +144,7 @@ def predict(res, x0 = 0, y0 = 0, z0 = 0, steps = 1000):
 
 def test(res, num_tests = 10, rkTime = 150, split = 2000, showPlots = True):
     valid_time = np.array([])
-    ICerror = np.array([])
+    
     for i in range(num_tests):
         ic = np.random.rand(3)*2-1
         rktest = RungeKutta(x0 = ic[0], y0 = ic[1], z0 = 30*ic[2], T = rkTime, ttsplit = split)
@@ -161,10 +161,6 @@ def test(res, num_tests = 10, rkTime = 150, split = 2000, showPlots = True):
                 print("Test " + str(i) + " valid time: " + str(j))
                 break
         
-        #print("Error from t.s. 1: ")
-        #print(pred[0,1] - rktest.u_arr_test[0,1])
-        #ICerror = np.append(ICerror, np.abs(pred[0,1] - rktest.u_arr_test[0,1]))
-        
         if showPlots:
             plt.figure()
             plt.plot(pred[0])
@@ -173,15 +169,14 @@ def test(res, num_tests = 10, rkTime = 150, split = 2000, showPlots = True):
     if showPlots:
         plt.show()
     
-    #arr = np.concatenate((ICerror.reshape(1,ICerror.size), valid_time.reshape(1,valid_time.size)), axis = 0) 
-    #plt.scatter(arr[0], arr[1])
-    
     print("Avg. valid time steps: " + str(np.mean(valid_time)))
     print("Std. valid time steps: " + str(np.std(valid_time)))
     return np.mean(valid_time)
 
-res = Reservoir()
-rk = RungeKutta(T = 300)
+
+#use 50, noise_scaling = 0.025
+res = Reservoir(rsvr_size = 300)
+rk = RungeKutta(T = 300, noise_scaling = 0.0)
 trainRRM(res, rk)
 
 #plot predictions immediately after training 
