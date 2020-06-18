@@ -97,6 +97,10 @@ def trainRRM(res, rk):
     alph = 10**-4
     #rrm = Ridge(alpha = alph, solver = 'cholesky')
     
+    #train on 10 small training sets with different noise - minimize error over all
+    #save the state of the reservoir for noisy datasets
+    #also try - train on signal^2 or other function (get more info than just 3 vars) - no noise
+    
     Y_train = rk.u_arr_train[:, 301:]
 
     
@@ -176,7 +180,7 @@ def test(res, num_tests = 10, rkTime = 150, split = 2000, showPlots = True):
 
 #use 50, noise_scaling = 0.025
 res = Reservoir(rsvr_size = 300)
-rk = RungeKutta(T = 300, noise_scaling = 0.0)
+rk = RungeKutta(T = 300, noise_scaling = 0)
 trainRRM(res, rk)
 
 #plot predictions immediately after training 
