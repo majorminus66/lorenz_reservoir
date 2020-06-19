@@ -35,12 +35,26 @@ class Reservoir:
         
         self.W = sparse.csr_matrix(spectral_radius/np.abs(max_eig)*unnormalized_W)
         
-        const_conn = int(rsvr_size*0.15)
-        Win = np.zeros((rsvr_size, 4))
+        const_conn = int(rsvr_size*0.1)
+        signal_conn = int((rsvr_size-const_conn)/6)
+        
+        
+        Win = np.zeros((rsvr_size, 7))
+        #constant
         Win[:const_conn, 0] = (np.random.rand(Win[:const_conn, 0].size)*2 - 1)*input_weight
-        Win[const_conn: const_conn + int((rsvr_size-const_conn)/3), 1] = (np.random.rand(Win[const_conn: const_conn + int((rsvr_size-const_conn)/3), 1].size)*2 - 1)*input_weight
-        Win[const_conn + int((rsvr_size-const_conn)/3):const_conn + 2*int((rsvr_size-const_conn)/3), 2] = (np.random.rand(Win[const_conn + int((rsvr_size-const_conn)/3):const_conn + 2*int((rsvr_size-const_conn)/3), 2].size)*2 - 1)*input_weight
-        Win[const_conn + 2*int((rsvr_size-const_conn)/3):, 3] = (np.random.rand(Win[const_conn + 2*int((rsvr_size-const_conn)/3):, 3].size)*2 - 1)*input_weight
+        #x
+        Win[const_conn: const_conn + signal_conn, 1] = (np.random.rand(Win[const_conn: const_conn + signal_conn, 1].size)*2 - 1)*input_weight
+        #y
+        Win[const_conn + signal_conn:const_conn + 2*signal_conn, 2] = (np.random.rand(Win[const_conn + signal_conn:const_conn + 2*signal_conn, 2].size)*2 - 1)*input_weight
+        #z
+        Win[const_conn + 2*signal_conn: const_conn + 3*signal_conn, 3] = (np.random.rand(Win[const_conn + 2*signal_conn: const_conn + 3*signal_conn, 3].size)*2 - 1)*input_weight
+        #x^2
+        Win[const_conn + 3*signal_conn:const_conn + 4*signal_conn, 4] = (np.random.rand(Win[const_conn + 3*signal_conn:const_conn + 4*signal_conn, 4].size)*2 - 1)*input_weight
+        #y^2
+        Win[const_conn + 4*signal_conn:const_conn + 5*signal_conn, 5] = (np.random.rand(Win[const_conn + 4*signal_conn:const_conn + 5*signal_conn, 5].size)*2 - 1)*input_weight
+        #z^2
+        Win[const_conn + 5*signal_conn:, 6] = (np.random.rand(Win[const_conn + 5*signal_conn:, 6].size)*2 - 1)*input_weight
+        
         
         self.Win = sparse.csr_matrix(Win)
         self.X = (np.random.rand(rsvr_size, 5002)*2 - 1)
@@ -82,7 +96,7 @@ def getX(res, rk,x0 = 1,y0 = 1,z0 = 1, noise = False):
     
     #loops through every timestep
     for i in range(0, u_training[0].size):
-        u = np.append(1, u_training[:,i]).reshape(4,1)
+        u = np.concatenate((np.array([1]), u_training[:,i], transform(u_training[:,i]))).reshape(7,1)
         
         x = res.X[:,i].reshape(res.rsvr_size,1)
         x_update = np.tanh(np.add(res.Win.dot(u), res.W.dot(x)))
@@ -102,13 +116,12 @@ def trainRRM(res, rk):
     #also try - train on signal^2 or other function (get more info than just 3 vars) - no noise
     
     Y_train = rk.u_arr_train[:, 301:]
-
     
     X = getX(res, rk, noise = True)[:, 301:(res.X[0].size - 1)]
-    X_train = np.concatenate((np.ones((1, 4700)), X, rk.u_arr_train[:, 300:(rk.u_arr_train[0].size - 1)]), axis = 0)
+    X_train = np.concatenate((np.ones((1, 4700)), X, rk.u_arr_train[:, 300:(rk.u_arr_train[0].size - 1)], transform(rk.u_arr_train[:, 300:(rk.u_arr_train[0].size - 1)])), axis = 0)
     #X_train = np.copy(X)
-        
-    idenmat = np.identity(res.rsvr_size+4)*alph
+    
+    idenmat = np.identity(res.rsvr_size+7)*alph
     data_trstates = np.matmul(Y_train, np.transpose(X_train))
     states_trstates = np.matmul(X_train,np.transpose(X_train))
     res.Wout = np.transpose(solve(np.transpose(states_trstates + idenmat),np.transpose(data_trstates)))
@@ -132,16 +145,16 @@ def predict(res, x0 = 0, y0 = 0, z0 = 0, steps = 1000):
 
     
     for i in range(0, steps):
-        y_in = np.append(1, Y[:,i]).reshape(4,1)
+        y_in = np.concatenate((np.array([1]), Y[:,i], transform(Y[:,i])), axis = 0).reshape(7,1) 
         x_prev = X[:,i].reshape(res.rsvr_size,1)
         
         x_current = np.tanh(np.add(res.Win.dot(y_in), res.W.dot(x_prev)))
         X[:,i+1] = x_current.reshape(1,res.rsvr_size)
         #X = np.concatenate((X, x_current), axis = 1)
         
-        y_out = np.matmul(res.Wout, np.concatenate((np.array([[1]]), x_current, Y[:,i].reshape(3,1)), axis = 0))
+        y_out = np.matmul(res.Wout, np.concatenate((np.array([[1]]), x_current, Y[:,i].reshape(3,1), transform(Y[:,i].reshape(3,1))), axis = 0))
         #y_out = np.matmul(res.Wout, x_current)
-        Y[:,i+1] = y_out.reshape(1, 3)
+        Y[:,i+1] = y_out.reshape(1, 3) 
         
 
     return Y
@@ -177,10 +190,12 @@ def test(res, num_tests = 10, rkTime = 150, split = 2000, showPlots = True):
     print("Std. valid time steps: " + str(np.std(valid_time)))
     return np.mean(valid_time)
 
+def transform(x):
+    return x**2+x**3
 
 #use 50, noise_scaling = 0.025
-res = Reservoir(rsvr_size = 300)
-rk = RungeKutta(T = 300, noise_scaling = 0)
+res = Reservoir(rsvr_size = 50)
+rk = RungeKutta(T = 300, noise_scaling = 0.025) 
 trainRRM(res, rk)
 
 #plot predictions immediately after training 
@@ -192,4 +207,4 @@ trainRRM(res, rk)
 
 
 np.random.seed()
-test(res, 10, showPlots = True)
+test(res, 100, showPlots = False)
